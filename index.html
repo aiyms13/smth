@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handwritten Digit Recognition</title>
+<style>
+  :root {
+    --navy: #2b2f77;
+    --orange: #e8773a;
+    --bg: #faf9f6;
+    --card-bg: #ffffff;
+    --border: #e3e1da;
+    --text: #2b2b2b;
+    --muted: #8a8a8a;
+    --grid: #efeee9;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 880px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 2px solid var(--text);
+    padding-bottom: 18px;
+    margin-bottom: 24px;
+  }
+
+  .logo {
+    width: 52px;
+    height: 52px;
+    background: var(--navy);
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  header p {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  #canvas-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      repeating-linear-gradient(0deg, var(--grid) 0 1px, transparent 1px 28px),
+      repeating-linear-gradient(90deg, var(--grid) 0 1px, transparent 1px 28px),
+      #fdfdfb;
+    aspect-ratio: 1 / 1;
+    touch-action: none;
+  }
+
+  #drawCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+  }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 10px 18px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.05s ease, opacity 0.15s ease;
+  }
+
+  button:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--navy);
+    color: white;
+  }
+
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .prediction-box {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+    min-height: 64px;
+  }
+
+  .big-digit {
+    font-size: 56px;
+    font-weight: 800;
+    color: var(--orange);
+    width: 64px;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .pred-text {
+    font-size: 15px;
+  }
+
+  .pred-text .conf {
+    font-weight: 700;
+  }
+
+  .preview-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  #preview {
+    width: 56px;
+    height: 56px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #000;
+    image-rendering: pixelated;
+  }
+
+  .preview-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .bars {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .bar-row .digit-label {
+    width: 14px;
+    text-align: right;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 10px;
+    background: var(--grid);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--grid);
+    border-radius: 5px;
+    transition: width 0.4s ease, background-color 0.4s ease;
+  }
+
+  .bar-fill.active {
+    background: var(--orange);
+  }
+
+  .bar-pct {
+    width: 42px;
+    text-align: right;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+
+  .placeholder {
+    color: var(--muted);
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">9</div>
+    <div>
+      <h1>Handwritten Digit Recognition</h1>
+      <p>Draw a digit from 0 to 9. A convolutional neural network reads it in real time.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="panel-label">DRAW HERE</div>
+      <div id="canvas-wrap">
+        <canvas id="drawCanvas"></canvas>
+      </div>
+      <div class="controls">
+        <button class="btn-secondary" id="clearBtn">Clear</button>
+        <button class="btn-primary" id="readBtn">Read digit</button>
+      </div>
+      <div class="hint">Tip: draw one large digit, roughly centred.</div>
+    </div>
+
+    <div>
+      <div class="panel-label">PREDICTION</div>
+      <div class="prediction-box">
+        <div class="big-digit" id="bigDigit">&mdash;</div>
+        <div>
+          <div class="pred-text placeholder" id="predText">Draw a digit and click "Read digit"</div>
+          <div class="preview-row" id="previewRow" style="display:none;">
+            <span class="preview-label">WHAT THE MODEL SEES</span>
+            <img id="preview" alt="28x28 preview">
+          </div>
+        </div>
+      </div>
+
+      <div class="bars" id="bars"></div>
+    </div>
+  </div>
+
+  <footer>
+    CNN trained on the MNIST dataset &middot; 99.5% test accuracy &middot; built for Educational Practice 2025-2026
+  </footer>
+</div>
+
+<script>
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+const barsContainer = document.getElementById('bars');
+
+let drawing = false;
+let lastX = 0, lastY = 0;
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.lineWidth = 18;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.fillStyle = '#fdfdfb';
+  ctx.fillRect(0, 0, rect.width, rect.height);
+}
+
+window.addEventListener('resize', () => {
+  const data = canvas.toDataURL();
+  resizeCanvas();
+});
+resizeCanvas();
+
+// Build the 10 probability bars (digits 0-9)
+for (let i = 0; i < 10; i++) {
+  const row = document.createElement('div');
+  row.className = 'bar-row';
+  row.innerHTML = `
+    <span class="digit-label">${i}</span>
+    <span class="bar-track"><span class="bar-fill" id="bar-${i}"></span></span>
+    <span class="bar-pct" id="pct-${i}">0%</span>
+  `;
+  barsContainer.appendChild(row);
+}
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  if (e.touches && e.touches.length > 0) {
+    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+  }
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  drawing = true;
+  const pos = getPos(e);
+  lastX = pos.x;
+  lastY = pos.y;
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fill();
+}
+
+function draw(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  const pos = getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(pos.x, pos.y);
+  ctx.stroke();
+  lastX = pos.x;
+  lastY = pos.y;
+}
+
+function endDraw(e) {
+  if (!drawing) return;
+  drawing = false;
+  predict();
+}
+
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('mouseleave', endDraw);
+
+canvas.addEventListener('touchstart', startDraw);
+canvas.addEventListener('touchmove', draw);
+canvas.addEventListener('touchend', endDraw);
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  const rect = canvas.getBoundingClientRect();
+  ctx.fillStyle = '#fdfdfb';
+  ctx.fillRect(0, 0, rect.width, rect.height);
+  document.getElementById('bigDigit').textContent = '\u2014';
+  const predText = document.getElementById('predText');
+  predText.textContent = 'Draw a digit and click "Read digit"';
+  predText.classList.add('placeholder');
+  document.getElementById('previewRow').style.display = 'none';
+  for (let i = 0; i < 10; i++) {
+    document.getElementById(`bar-${i}`).style.width = '0%';
+    document.getElementById(`bar-${i}`).classList.remove('active');
+    document.getElementById(`pct-${i}`).textContent = '0%';
+  }
+});
+
+document.getElementById('readBtn').addEventListener('click', predict);
+
+async function predict() {
+  const dataUrl = canvas.toDataURL('image/png');
+
+  try {
+    const response = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUrl })
+    });
+
+    if (!response.ok) {
+      throw new Error('Prediction failed');
+    }
+
+    const result = await response.json();
+    updateUI(result);
+  } catch (err) {
+    const predText = document.getElementById('predText');
+    predText.textContent = 'Could not reach the model. Is the server running?';
+    predText.classList.remove('placeholder');
+    console.error(err);
+  }
+}
+
+function updateUI(result) {
+  const { prediction, confidence, probabilities, preview } = result;
+
+  document.getElementById('bigDigit').textContent = prediction;
+
+  const predText = document.getElementById('predText');
+  predText.classList.remove('placeholder');
+  predText.innerHTML = `Reads as <strong>${prediction}</strong> &middot; <span class="conf">${(confidence * 100).toFixed(1)}%</span> sure`;
+
+  document.getElementById('previewRow').style.display = 'flex';
+  document.getElementById('preview').src = preview;
+
+  for (let i = 0; i < 10; i++) {
+    const pct = probabilities[i] * 100;
+    const bar = document.getElementById(`bar-${i}`);
+    bar.style.width = pct.toFixed(1) + '%';
+    bar.classList.toggle('active', i === prediction);
+    document.getElementById(`pct-${i}`).textContent = pct.toFixed(0) + '%';
+  }
+}
+</script>
+</body>
+</html>
